@@ -14,6 +14,7 @@ class Database:
             {
                 "databaseURL": "https://naucse-a8142-default-rtdb.europe-west1.firebasedatabase.app"
             })
+
         self.user_ref = db.reference("users")
 
     def loginUser(self, name, password):
@@ -25,11 +26,42 @@ class Database:
                     if bcrypt.checkpw(password.encode(), hash_pass.encode()):
                         return True
                     else:
-                        print("Incorrect password")
                         return False
             else:
-                print("User not found")
                 return False
         except Exception as e:
-            print(f"Error: {e}")
+            return e
+
+    def signupUser(self, name, email, password):
+        try:
+            existing_user = self.user_ref.order_by_child("email").equal_to(email).get()
+            if existing_user:
+
+                return False
+
+            hash_pass = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
+            users = self.user_ref.get()
+            max_id = 0
+            if users:
+                for user_id, user_data in users.items():
+                    try:
+                        user_id_int = int(user_id)
+                        if user_id_int > max_id:
+                            max_id = user_id_int
+                    except ValueError:
+                        continue
+
+            new_id = max_id + 1
+
+            new_user_ref = self.user_ref.child(str(new_id)).set(
+            {
+                "name": name,
+                "email": email,
+                "password": hash_pass.decode("utf-8"),
+                "level_id": 4
+            })
+
+            return True
+        except Exception as e:
             return False
