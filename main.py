@@ -73,12 +73,13 @@ def signup_user():
     password = data.get("password")
 
     if not name or not email or not password or not  password:
-        print("Missing username, email, or password")  # Debug log
+        print("Missing username, email, or password")
         return jsonify({"error": "Username, email, and password are required."}), 400
 
     res = db_conn.signupUser(name, email, level, password)
+
     if res == "email-error":
-        print(f"Email {email} is already used.")  # Debug log
+        print(f"Email {email} is already used.")
         return jsonify({"error": "Email is already used."}), 400
     elif res == "username-error":
         print(f"Username {name} is already taken.")  # Debug log
