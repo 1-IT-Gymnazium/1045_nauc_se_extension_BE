@@ -23,21 +23,28 @@ class Database:
             if res:
                 for user_id, user_data in res.items():
                     hash_pass = user_data.get("password")
-                    if bcrypt.checkpw(password.encode(), hash_pass.encode()):
-                        return True
+                    if hash_pass and bcrypt.checkpw(password.encode('utf-8'), hash_pass.encode('utf-8')):
+                        return "true"
                     else:
-                        return False
+                        return "false-password"
             else:
-                return False
+                return "false-username"
+
         except Exception as e:
-            return e
+            return "flase-error"
 
-    def signupUser(self, name, email, password):
+
+    def signupUser(self, name, email, level, password):
         try:
-            existing_user = self.user_ref.order_by_child("email").equal_to(email).get()
-            if existing_user:
+            existing_email_user = self.user_ref.order_by_child("email").equal_to(email).get()
+            if existing_email_user:
+                print(f"Email {email} is already used.")
+                return "email-error"
 
-                return False
+            existing_name_user = self.user_ref.order_by_child("name").equal_to(name).get()
+            if existing_name_user:
+                print(f"Username {name} is already taken.")
+                return "username-error"
 
             hash_pass = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
@@ -54,13 +61,19 @@ class Database:
 
             new_id = max_id + 1
 
-            new_user_ref = self.user_ref.child(str(new_id)).set(
-            {
+            new_user_ref = self.user_ref.child(str(new_id)).set({
                 "name": name,
                 "email": email,
                 "password": hash_pass.decode("utf-8"),
-                "level_id": 4
+                "level_id": level
             })
+
+            print(f"New user created with ID: {new_id}")
+            return True
+        except Exception as e:
+            print(f"Error during signup: {e}")
+            return False
+
 
             return True
         except Exception as e:

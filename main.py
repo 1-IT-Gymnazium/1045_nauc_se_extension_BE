@@ -52,32 +52,44 @@ def login_user():
         return jsonify({"error": "Username and password required."}), 400
 
     user_exists = db_conn.loginUser(name, password)
-    if user_exists:
-        return jsonify({"message": "Login successful!!!"}), 200
-    else:
-        return jsonify({"error": "Invalid username or password."}), 401
+    if user_exists == "true":
+        return jsonify(name), 200
+
+    elif (user_exists == "false-password"):
+        return jsonify({"error": "password"}), 401
+
+    elif (user_exists == "false-username"):
+        return jsonify({"error": "password"}), 000
+
+    return jsonify({"error": "password"}), 401
+
 
 @app.route("/signupuser", methods=["POST"])
 def signup_user():
     data = request.get_json()
     name = data.get("name")
     email = data.get("email")
+    level = data.get("level")
     password = data.get("password")
 
-    if not name or not email or not password:
+    if not name or not email or not password or not  password:
+        print("Missing username, email, or password")  # Debug log
         return jsonify({"error": "Username, email, and password are required."}), 400
 
-    res = db_conn.signupUser(name, email, password)
-    if res:  # Check if res is truthy (successful signup)
+    res = db_conn.signupUser(name, email, level, password)
+    if res == "email-error":
+        print(f"Email {email} is already used.")  # Debug log
+        return jsonify({"error": "Email is already used."}), 400
+    elif res == "username-error":
+        print(f"Username {name} is already taken.")  # Debug log
+        return jsonify({"error": "Username is already taken."}), 400
+    elif res:
         return jsonify({"message": "Signup successful!"}), 200
     else:
-        return jsonify({"error": "Signup failed."}), 401
-
+        print("Signup failed")  # Debug log
+        return jsonify({"error": "Signup failed."}), 500
 
 
 if __name__ == "__main__":
     app.run(debug=True)
 
-# db_conn = Database()
-# result = db_conn.signupUser("JohnDoe", "john@example.com", "securepassword")
-# print(f"Signup result: {result}")
