@@ -48,20 +48,21 @@ def login_user():
     data = request.get_json()
     name = data.get("name")
     password = data.get("password")
+
     if not name or not password:
         return jsonify({"error": "Username and password required."}), 400
 
-    user_exists = db_conn.loginUser(name, password)
-    if user_exists == "true":
-        return jsonify(name), 200
+    user_result = db_conn.loginUser(name, password)
 
-    elif (user_exists == "false-password"):
-        return jsonify({"error": "password"}), 401
+    if isinstance(user_result, dict):
+        return jsonify({"id": user_result["id"], "name": user_result["name"]}), 200
+    elif user_result == "false-password":
+        return jsonify({"error": "Incorrect password."}), 401
+    elif user_result == "false-username":
+        return jsonify({"error": "Username not found."}), 404
+    else:  # Generic error
+        return jsonify({"error": "An error occurred during login."}), 500
 
-    elif (user_exists == "false-username"):
-        return jsonify({"error": "password"}), 000
-
-    return jsonify({"error": "password"}), 401
 
 
 @app.route("/signupuser", methods=["POST"])
@@ -82,13 +83,33 @@ def signup_user():
         print(f"Email {email} is already used.")
         return jsonify({"error": "Email is already used."}), 400
     elif res == "username-error":
-        print(f"Username {name} is already taken.")  # Debug log
+        print(f"Username {name} is already taken.")
         return jsonify({"error": "Username is already taken."}), 400
     elif res:
         return jsonify({"message": "Signup successful!"}), 200
     else:
-        print("Signup failed")  # Debug log
+        print("Signup failed")
         return jsonify({"error": "Signup failed."}), 500
+
+
+@app.route("/filter-words", methods=["POST"])
+def filter_words():
+    try:
+        data = request.get_json()
+        text = data.get("text", "")
+        user_level = int(data.get("user_level", 0))
+
+        if not text or not user_level:
+            return jsonify({"error": "Invalid input"}), 400
+
+        # Use the Database class's filterWords method
+        filtered_words = db_conn.filterWords(text, user_level)
+
+        return jsonify({"highlighted_words": filtered_words}), 200
+
+    except Exception as e:
+        print(f"Error in filter_words: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
