@@ -2,8 +2,8 @@ import firebase_admin
 from firebase_admin import credentials, db
 import bcrypt
 import os
-import random
-from services.chechPassword import check_password
+from services.chech_password import check_password
+
 
 class Database:
     def __init__(self):
@@ -26,8 +26,9 @@ class Database:
             if res:
                 for user_id, user_data in res.items():
                     hash_pass = user_data.get("password")
+                    level_id = user_data.get("level_id")
                     if hash_pass and bcrypt.checkpw(password.encode("utf-8"), hash_pass.encode("utf-8")):
-                        return {"id": user_id, "name": user_data.get("name")}
+                        return {"id": user_id, "name": user_data.get("name"), "level": user_data.get("level_id")}
                     else:
                         return "false-password"
             else:
@@ -36,10 +37,8 @@ class Database:
             print(f"Error during login: {e}")
             return "false-error"
 
-
     def signupUser(self, name, email, level, password):
         try:
-
             check_password(password)
 
             existing_email_user = self.user_ref.order_by_child("email").equal_to(email).get()
@@ -52,7 +51,6 @@ class Database:
 
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-
             new_user_ref = self.user_ref.push({
                 "name": name,
                 "email": email,
@@ -64,27 +62,43 @@ class Database:
             print(f"Error during signup: {e}")
             return "Signup failed."
 
-
-
-    def filterWords(self, text, user_level):
+    def filterWords(self, cleaned_words, user_level):
         try:
-            words = text.split()
-            filtered_words = []
+            user_level = int(user_level)
+            filtered_words = {}
+            db_results = self.words_ref.get()
 
-            for word in words:
-                # Convert word to lowercase for case-insensitive matching
-                word_lower = word.lower()
+            if not db_results:
+                print("No data found in the database.")
+                return {}
 
-                # Use words_ref here to filter words from Firebase
-                result = self.words_ref.order_by_child("name").equal_to(word_lower).get()
+            for word in cleaned_words:
+                word_lower = word.lower().strip()
 
-                for word_id, word_data in result.items():
-                    word_level = int(word_data.get("level", 0))
-                    if word_level > user_level:
-                        filtered_words.append(word)
+                for unique_id, word_data in db_results.items():
+                    if not isinstance(word_data, dict):
+                        continue
 
+                    db_word = word_data.get("name", "").lower().strip()
+                    db_level = int(word_data.get("level", 0))
+
+                    # Check if the word is in the database and the level is higher
+                    if word_lower == db_word and db_level > user_level:
+                        filtered_words[word] = {"level": db_level}  # Add to dict
+                        break
+
+            print("Filtered Words:", filtered_words)
             return filtered_words
-
         except Exception as e:
-            print(f"Error during filterWords: {e}")
-            return []
+            print(f"Error in filterWords: {e}")
+            return {}
+
+    def checkUser(self, user_id):
+        try :
+            user = auth.get_user(user_id)
+
+            return "true"
+
+        except firebase_admin.auth.AuthError as e:
+            print(f"Error fetching user: {e}")
+            return "false"
