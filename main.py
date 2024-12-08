@@ -13,38 +13,40 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 db_conn = Database()
 translator = pipeline("translation", model="Helsinki-NLP/opus-mt-en-cs")
 
-@app.route("/scrape", methods=["GET"])
+@app.route("/scrape", methods=["POST"])
 def scrape_website():
-    url = request.args.get("url")
-    if not url:
-        return jsonify({"error": "No URL provided"}), 400
-
-    print(f"Received URL: {url}")
     try:
-        response = requests.get(url)
-        response.raise_for_status()
+        data = request.get_json()
+        url = data.get("url")
+        level_user = data.get("level")
 
-        soup = BeautifulSoup(response.content, "html.parser")
-        clean_text = soup.get_text(separator=" ", strip=True)
-        clean_text = " ".join(clean_text.split())
+        if not url or not level_user:
+            return jsonify({"error": "URL and user level are required."}), 400
 
-        return jsonify({"text": clean_text})
+        res = db_conn.filter_words(level_user, url)
+
+        return jsonify(res)
+
     except Exception as e:
-        print(f"Error occurred: {str(e)}")
+        print(f"Error during scraping: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/translate", methods=["POST"])
-def translate_text():
-    data = request.get_json()
-    text = data.get("text", "")
-    if not text:
-        return jsonify({"error": "No text provided."}), 400
 
-    try:
-        translated_text = translator(text, max_length=256)[0]["translation_text"]
-        return jsonify({"translated_text": translated_text})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @app.route("/translate", methods=["POST"])
+# def translate_text():
+#     data = request.get_json()
+#     text = data.get("text", "")
+#     if not text:
+#         return jsonify({"error": "No text provided."}), 400
+
+#     try:
+#         translated_text = translator(text, max_length=256)[0]["translation_text"]
+#         return jsonify({"translated_text": translated_text})
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+
+
 
 @app.route("/loginuser", methods=["POST"])
 def login_user():
@@ -87,34 +89,21 @@ def signup_user():
     else:
         return jsonify({"error": "Signup failed."}), 500
 
-@app.route("/filter-words", methods=["POST"])
-def filter_words():
-    try:
-        data = request.get_json()
-        text = data.get("text", "")
-        user_level = "4"
-        if not text or user_level is None:
-            return jsonify({"error": "Invalid input. 'text' and 'user_level' are required."}), 400
-
-        print(text)
-        # cleaned_words = [
-        #     re.sub(r"[^a-zA-Z0-9\s]", "", word).lower() for word in text.split()
-        # ]
-
-        # highlighted_words = db_conn.filterWords(cleaned_words, int(user_level))
-        # print(highlighted_words)
-
-        return jsonify({"highlighted_words": highlighted_words}), 200
-    except Exception as e:
-        return jsonify({"error": f"An error occurred: {e}"}), 500
-
 
 @app.route("/checkuser", methods=["GET"])
 def check_user():
     data = request.get_json()
     id_user = data.get("id")
     res = db_conn.checkUser(id_user)
-    return res
+    if res == "true":
+        return jsonify({"status": "success"}), 200
+    else:
+        return jsonify({"error": res}), 400
+
+# @app.route("/remove", methods=["GET"])
+# def removes():
+#     user_result = db_conn.remove_word_db()
+#     return user_result
 
 
 

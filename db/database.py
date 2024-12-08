@@ -1,9 +1,10 @@
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, auth
 import bcrypt
 import os
-from services.chech_password import check_password
-
+from utils.password_security import check_password
+from utils.scrape_text import scrape_text_utils
+from firebase_admin.exceptions import FirebaseError
 
 class Database:
     def __init__(self):
@@ -62,43 +63,89 @@ class Database:
             print(f"Error during signup: {e}")
             return "Signup failed."
 
-    def filterWords(self, cleaned_words, user_level):
+    # def filter_words(self, user_level, web_url):
+    #     try:
+
+    #         web_words = scrape_text_utils(web_url)
+    #         if not web_words:
+    #             return {"error": "No words found in the provided URL."}
+
+    #         filtered_words = {}
+    #         for word in web_words:
+    #             word_data = self.words_ref.order_by_child("name").equal_to(word).get()
+    #             if word_data:
+    #                 for key, value in word_data.items():
+    #                     word_level = int(value.get("level", 0))
+    #                     if word_level > int(user_level):
+    #                         filtered_words[word] = word_level
+
+    #         return filtered_words
+    #     except Exception as e:
+    #         print(f"Filtering error: {e}")
+    #         return {"error": str(e)}
+
+
+    def filter_words(self, user_level, web_url):
         try:
-            user_level = int(user_level)
-            filtered_words = {}
-            db_results = self.words_ref.get()
+            # Scrape words from the website
+            web_words = scrape_text_utils(web_url)
+            if not web_words:
+                return {"error": "No words found in the provided URL."}
 
-            if not db_results:
-                print("No data found in the database.")
-                return {}
+            # Fetch all words from Firebase in one go
+            all_words_data = self.words_ref.order_by_child("name").get()
+            if not all_words_data:
+                return {"error": "No word data found in the database."}
 
-            for word in cleaned_words:
-                word_lower = word.lower().strip()
+            # Prepare a mapping of valid words based on user level
+            valid_words = {
+                word_data['name']: int(word_data['level'])
+                for word_data in all_words_data.values()
+            }
 
-                for unique_id, word_data in db_results.items():
-                    if not isinstance(word_data, dict):
-                        continue
+            # Filter words from the web_words list using valid_words dictionary
+            filtered_words = {
+                word: valid_words[word]
+                for word in web_words if word in valid_words and valid_words[word] > int(user_level)
+            }
 
-                    db_word = word_data.get("name", "").lower().strip()
-                    db_level = int(word_data.get("level", 0))
-
-                    # Check if the word is in the database and the level is higher
-                    if word_lower == db_word and db_level > user_level:
-                        filtered_words[word] = {"level": db_level}  # Add to dict
-                        break
-
-            print("Filtered Words:", filtered_words)
             return filtered_words
+
         except Exception as e:
-            print(f"Error in filterWords: {e}")
-            return {}
+            print(f"Filtering error: {e}")
+            return {"error": str(e)}
 
     def checkUser(self, user_id):
-        try :
-            user = auth.get_user(user_id)
-
+        try:
+            print(f"Attempting to fetch user with ID: {user_id}")
+            user = auth.get_user(user_id)  # Ensure this is the correct UID
+            print(f"User found: {user.uid}")
             return "true"
-
-        except firebase_admin.auth.AuthError as e:
+        except auth.UserNotFoundError as e:
             print(f"Error fetching user: {e}")
-            return "false"
+            return "false-user-not-found"
+        except FirebaseError as e:
+            print(f"Error fetching user: {e}")
+            return "false-error"
+
+
+    # def remove_word_db(self):
+    #     try:
+    #         # Fetch all word data from Firebase
+    #         all_words_data = self.words_ref.order_by_child("name").get()
+    #         if not all_words_data:
+    #             return {"error": "No word data found in the database."}
+
+    #         # Loop through all words and check their length
+    #         for word_id, word_data in all_words_data.items():
+    #             word_name = word_data.get('name', '').lower()  # Ensure case-insensitive comparison
+    #             if len(word_name) == 1 and word_name not in ['a', 'i']:  # Exclude 'a' and 'i'
+    #                 # Remove word from the database
+    #                 self.words_ref.child(word_id).delete()  # Use delete() instead of remove()
+
+    #         return {"success": "Single-character words (except 'a' and 'i') removed."}
+
+    #     except Exception as e:
+    #         print(f"Error removing words: {e}")
+    #         return {"error": str(e)}
+
