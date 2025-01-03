@@ -67,3 +67,4 @@ venv.bak/
 coverage/
 *.tgz
 *.eslintcache
+config/firebaseKey.json

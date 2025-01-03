@@ -1,4 +1,4 @@
-#!/home/scrapper/nauc-se/server/venv/bin/python3
+#!/home/scrapper/nauc-se/server/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

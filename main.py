@@ -99,12 +99,13 @@ def signup_user():
 
 
 
-@app.route("/checkuser", methods=["GET"])
+@app.route("/checkuser", methods=["POST"])
 def check_user():
     data = request.get_json()
     id_user = data.get("id")
     res = db_conn.checkUser(id_user)
-    if res == "true":
+    print(res)
+    if res == True:
         return jsonify({"status": "success"}), 200
     else:
         return jsonify({"error": res}), 400
@@ -121,18 +122,52 @@ def addWordsUser():
     id_user = data.get("id");
     word_name = data.get("word")
     word_id = db_conn.check_word_id(word_name);
-    user_words = db_conn.add_word_to_bank(id_user, word_id)
+    res = db_conn.add_word_to_bank(id_user, word_id)
+    return res
+
+
+@app.route("/removewordbank", methods=["POST"])
+def testremove():
+    data = request.get_json();
+    id_user = data.get("id");
+    word_name = data.get("word")
+    word_id = db_conn.check_word_id(word_name);
+
+    res = db_conn.remove_word_from_bank(id_user, word_id)
+    return res
+
+
+
+
+    # if not id_user or not word_name:
+    #     return "Missing user ID or word name", 400
+    # word_id = db_conn.check_word_id(word_name)
+
+    # if not word_id:
+    #     return "Word ID not found", 404
+
+    # res = db_conn.remove_word_from_bank(id_user, word_id)
+    # return res
+
+
+
+
+@app.route("/userwords", methods=["POST"])
+def getWordsUser():
+    data = request.get_json()
+    id_user = data.get("id")
+    user_words = db_conn.get_user_word_bank(id_user)
     return user_words
 
-@app.route("/checkword", methods=["GET"])
-def checkWord():
-    # Get the word from the query parameters
-    word = request.args.get("word")
-    if not word:
-        return jsonify({"error": "No word provided"}), 400
+# @app.route("/checkword", methods=["GET"])
+# def checkWord():
+#     # Get the word from the query parameters
+#     word = request.args.get("word")
+#     if not word:
+#         return jsonify({"error": "No word provided"}), 400
 
-    result = db_conn.check_word(word)
-    return jsonify(result)
+#     result = db_conn.check_word(word)
+#     return jsonify(result)
 
 
 
